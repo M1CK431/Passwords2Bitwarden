@@ -48,12 +48,6 @@ git clone https://github.com/facorazza/Passwords2Bitwarden.git
 cd Passwords2Bitwarden
 ```
 
-Install Python requirements:
-
-```shell
-python -m pip install -r requirements.txt
-```
-
 To convert the zip archive call the script like so:
 
 ```shell

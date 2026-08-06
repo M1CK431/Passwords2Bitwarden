@@ -2,22 +2,61 @@ import csv
 import json
 import zipfile
 import os
+import argparse
+import sys
+import re
 
-import click
 
-from utils import parse_custom_fields
+def parse_custom_fields(fields):
+    """Parse Bitwarden custom fields string into a list of dicts."""
+    custom_fields = []
+    pattern = re.compile(r"(\S+), (\w+): (.+)")
+    for field in pattern.findall(fields):
+        match field[1]:
+            case "text" | "email" | "file" | "website":
+                field_type = 0  # Text field
+            case "secret":
+                field_type = 1  # Hidden field
+            case _:
+                field_type = 0  # Defaults to text field
+        custom_fields.append({
+            "name": field[0],
+            "value": field[2],
+            "type": field_type,
+        })
+    return custom_fields
 
-@click.command()
-@click.argument("zip_filepath", type=click.Path(exists=True))
-@click.argument("output_dir", type=click.Path(exists=False), default=".")
-def cli(zip_filepath, output_dir):
+
+def main():
+    # Configure argument parser
+    parser = argparse.ArgumentParser(
+        description="Convert a Bitwarden export ZIP to JSON."
+    )
+    parser.add_argument(
+        "zip_filepath",
+        help="Path to the export ZIP file"
+    )
+    parser.add_argument(
+        "output_dir",
+        nargs="?",
+        default=".",
+        help="Output directory (default: current directory)"
+    )
+    args = parser.parse_args()
+
+    zip_filepath = args.zip_filepath
+    output_dir = args.output_dir
+
+    # Validate input file exists
+    if not os.path.isfile(zip_filepath):
+        print(f"Error: '{zip_filepath}' does not exist or is not a file.", file=sys.stderr)
+        sys.exit(1)
+
     # Extract the ZIP archive
     with zipfile.ZipFile(zip_filepath, "r") as zf:
         zf.extractall()
 
-    dump = {}
-    dump["folders"] = []
-    dump["items"] = []
+    dump = {"folders": [], "items": []}
 
     # Process Folders.csv
     with open("Folders.csv", "r", encoding="utf-8") as f:
@@ -40,13 +79,17 @@ def cli(zip_filepath, output_dir):
                     "name": row["Label"]
                 })
 
-        while len(folders):
-            for index, folder in enumerate(folders):
+        # Reconstruct folder hierarchy safely
+        while folders:
+            remaining = []
+            for folder in folders:
                 if folder["parent_id"] in folder_structure:
                     path = folder_structure[folder["parent_id"]] + "/" + folder["name"]
                     folder_structure[folder["id"]] = path
                     dump["folders"].append({"id": folder["id"], "name": path})
-                    folders.pop(index)
+                else:
+                    remaining.append(folder)
+            folders = remaining
 
     # Process Passwords.csv
     with open("Passwords.csv", "r", encoding="utf-8") as f:
@@ -64,10 +107,7 @@ def cli(zip_filepath, output_dir):
                     "username": row["Username"],
                     "password": row["Password"],
                     "totp": None,
-                    "uris": [{
-                        "match": None,
-                        "uri": row["Url"],
-                    }],
+                    "uris": [{"match": None, "uri": row["Url"]}],
                 },
                 "fields": parse_custom_fields(row["Custom Fields"]),
                 "collectionIds": [],
@@ -75,7 +115,7 @@ def cli(zip_filepath, output_dir):
 
     # Ensure output directory exists
     if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+        os.makedirs(output_dir, exist_ok=True)
 
     # Save to the output directory
     output_file = os.path.join(output_dir, "dump.json")
@@ -86,4 +126,4 @@ def cli(zip_filepath, output_dir):
 
 
 if __name__ == "__main__":
-    cli()
+    main()

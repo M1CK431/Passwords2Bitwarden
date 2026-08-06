@@ -1,61 +1,85 @@
 # Passwords2Bitwarden
 
-Vault converter from Nextcloud Passwords to Bitwarden or Vaultwarden.
+Convert Nextcloud Passwords exports to Bitwarden / Vaultwarden JSON format.
 
 ## Requirements
 
-The script requires at least Python 3.10. Otherwise, you can run the script in a container.
+- **Python 3.10+** (required for the primary, dependency-free workflow)
+- **Docker or Podman** (optional, for a local containerized fallback)
+- **Zero external dependencies** – the script relies solely on Python's standard library.
 
-If you're using an older version, you can work around it by using the code mentioned [here](https://github.com/facorazza/Passwords2Bitwarden/issues/8) even though I have not tested it.
+## How to Use
 
-## How to...
+### 1. Export from Nextcloud Passwords
 
-### Nextcloud Passwords
+> ⚠️ Before exporting, switch your Nextcloud language to English: `Settings > Personal info > Language`. You can revert it afterward.
 
-> :warning: Before exporting your passwords, you must change your Nextcloud language to English. Got to `Settings > Personal info > Language`. You can revert the change once downloaded the archive.
+Go to `Passwords > More > Backup & Restore`, select `Backup or export`, and configure:
+1. **Format**: `Predefined CSV`
+2. **Options**: Check at least `Passwords` and `Folders`
+3. **Run Export** → Download the ZIP archive
 
-Enter your Nextcloud instance go to `Passwords > More > Backup & Restore`. Select `Backup or export` and then fill the following fields:
+### 2. Convert to Bitwarden Format
 
-1. Choose Format: `Predefined CSV`
-2. Select Options: Select at least `Passwords` and `Folders`
-3. Run Export
-4. Download CSV
+#### 🔹 Primary Method: Single File (Zero Dependencies)
+This fork is designed for maximum portability. No installation, no cloning, no external packages required.
 
-### Conversion
+1. Copy `main.py` directly into your working directory.
+2. Run the script pointing to your exported ZIP:
+   ```bash
+   python main.py /path/to/nextcloud-export.zip
+   ```
+   Optionally specify an output directory:
+   ```bash
+   python main.py /path/to/nextcloud-export.zip ./output
+   ```
+3. The script extracts the ZIP locally, processes the CSVs, and generates `dump.json`.
 
-There are two options to run the conversion: the first one is using Docker or Podman, the second one is to run the script by directly cloning the repository.
+💡 **Tip**: Use `python main.py --help` to see available options.
 
-The former is more robust in terms of dependencies and you don't need to install anything if you already have a container runtime installed. However, it is yet to be tested. Please open an issue if you find problems with this method or if it worked and the instructions were clear enough.
+#### 🔸 Alternative: Docker / Podman (Local Build)
+Prefer a containerized environment or don't have Python installed? You can run the script locally using Docker or Podman. No pre-built image is published; instead, you'll need the project files:
 
-The latter method requires you to install a few Python dependencies, but it's been tested and is fairly consistent.
+**Option A: Download as ZIP (Recommended)**
+1. Click **Code → Download ZIP** on this repository.
+2. Extract the archive and navigate to the folder.
+3. Build and run locally:
+   ```bash
+   docker build -t p2b .
+   docker run --rm -v ./<path-to-archive>/<archive-name>.zip:/app/archive.zip -v ./output:/app/output p2b
+   ```
 
-#### Docker
+**Option B: Manual Copy**
+If you only want the containerized workflow, copy just these three files into a new directory:
+- `main.py`
+- `Dockerfile`
+- `.dockerignore`
 
-> You can use the automatically built container image on GitHub or you can build your own using the Dockerfile contained in the repository.
+Then run the same `docker build` and `docker run` commands as above. The converted file will be available in the `output` directory.
 
-```shell
-docker run --name passwords2bitwarden --rm -v ./<path-to-archive>/<archive-name>.zip:/app/archive.zip -v ./passwords2bitwarden:/app/output ghcr.io/facorazza/passwords2bitwarden
-```
+### 3. Import to Bitwarden / Vaultwarden
 
-You'll find the exported dump under `passwords2bitwarden`.
+Go to your instance: `Tools > Import Data` → select `Bitwarden (json)` → upload `dump.json` → click `Import Data`.
 
-#### Bare-Metal
+## Why this fork?
 
-Clone the repo locally:
+The original project emphasizes Docker images and external dependencies. This fork prioritizes **portability and simplicity**:
+- ✅ Single, self-contained Python file (`main.py`) for instant usage
+- ✅ Zero external dependencies (standard library only)
+- ✅ Local Docker/Podman fallback without published images
+- ✅ Optimized for quick copy-paste or ZIP extraction workflows
 
-```shell
-git clone https://github.com/facorazza/Passwords2Bitwarden.git
-cd Passwords2Bitwarden
-```
+This fork was created with the original author's approval following a PR discussion ([#12](https://github.com/facorazza/Passwords2Bitwarden/pull/12#issuecomment-5197595169)). Although I typically aim to keep projects unified to avoid fragmentation, this approach enables a more practical, zero-dependency workflow while fully respecting the original work.
 
-To convert the zip archive call the script like so:
+## Code of Conduct
 
-```shell
-python main.py ~/Downloads/.../path/to/zip/archive.zip
-```
+Please note that this project is released with a [Contributor Code of Conduct](CODE-OF-CONDUCT.md).
+By participating in this project you agree to abide by its terms.
 
-The converted file will be stored inside the folder repo under the name `dump.json`.
+## Sponsoring
 
-### Bitwarden (Vaultwarden) Import
+If you find this project useful, please consider giving it a **star ⭐ on GitHub** to show your support!
 
-Go to your Bitwarden or Vaultwarden instance `Tools > Import Data`. Select `Bitwarden (json)`. Upload the `dump.json` file and click on `Import Data`.
+If you'd like to go a step further, you can also **buy me a coffee** ☕ via [Buy Me a Coffee](https://www.buymeacoffee.com/m1ck431). Your support helps me keep building great open-source projects like this one. Thank you! 🙏
+
+<a href="https://www.buymeacoffee.com/m1ck431" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
